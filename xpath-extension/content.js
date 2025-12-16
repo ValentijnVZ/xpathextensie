@@ -1,0 +1,10 @@
+let lastElement = null;
+
+document.addEventListener("contextmenu", e => {
+  lastElement = e.target;
+});
+
+window.getLastElementXPaths = () => {
+  if (!lastElement) return [];
+  return generateXPaths(lastElement); // xpath.js
+};
