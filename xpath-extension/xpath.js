@@ -1,17 +1,7 @@
 const ATTR_PRIORITY = [
-  "id",
-  "data-testid",
-  "data-test",
-  "data-cy",
-  "name",
-  "aria-label",
-  "title",
-  "placeholder",
-  "href",
-  "src",
-  "type",
-  "role",
-  "class"
+  "id", "data-testid", "data-test", "data-cy",
+  "name", "aria-label", "title", "placeholder",
+  "href", "src", "type", "role", "class"
 ];
 
 function escapeXPathValue(value) {
@@ -25,7 +15,6 @@ function escapeXPathValue(value) {
   }
 }
 
-// Genereer combinaties van attributen: name+class en aria-label+class
 function generateAttributeCombinations(el) {
   const xpaths = [];
   const tag = el.tagName.toLowerCase();
@@ -45,7 +34,7 @@ function generateAttributeCombinations(el) {
         labelParts.push(`@${attr}`);
       }
     });
-    if (parts.length === attrs.length) { // alleen volledige combinaties
+    if (parts.length === attrs.length) {
       xpaths.push({
         label: labelParts.join(" + "),
         xpath: `//${tag}[${parts.join(" and ")}]`
@@ -72,7 +61,7 @@ function generateXPaths(el) {
     }
   }
 
-  // 2️⃣ Tekst-gebaseerd (buttons, links, labels)
+  // 2️⃣ Tekst-gebaseerd
   const text = el.innerText?.trim();
   if (text && text.length > 0 && text.length <= 60 && ["button","a","label","span"].includes(tag)) {
     xpaths.push({
@@ -81,11 +70,11 @@ function generateXPaths(el) {
     });
   }
 
-  // 3️⃣ Twee combinaties van attributen
+  // 3️⃣ Combinaties
   const combos = generateAttributeCombinations(el);
   xpaths.push(...combos);
 
-  // 4️⃣ Structurele fallback (absolute / semi-absolute)
+  // 4️⃣ Structurele fallback
   xpaths.push({
     label: "fallback",
     xpath: getAbsoluteXPath(el)
@@ -94,7 +83,6 @@ function generateXPaths(el) {
   return xpaths;
 }
 
-// Absolute XPath fallback
 function getAbsoluteXPath(el) {
   if (!el) return "";
   const parts = [];
