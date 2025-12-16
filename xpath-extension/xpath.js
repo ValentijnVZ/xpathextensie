@@ -25,57 +25,65 @@ function escapeXPathValue(value) {
   }
 }
 
+// Genereer combinaties van attributen: name+class en aria-label+class
+function generateAttributeCombinations(el) {
+  const xpaths = [];
+  const tag = el.tagName.toLowerCase();
+
+  const combinations = [
+    ["name", "class"],
+    ["aria-label", "class"]
+  ];
+
+  combinations.forEach((attrs) => {
+    const parts = [];
+    const labelParts = [];
+    attrs.forEach(attr => {
+      const val = el.getAttribute(attr);
+      if (val) {
+        parts.push(`@${attr}=${escapeXPathValue(val)}`);
+        labelParts.push(`@${attr}`);
+      }
+    });
+    if (parts.length === attrs.length) { // alleen volledige combinaties
+      xpaths.push({
+        label: labelParts.join(" + "),
+        xpath: `//${tag}[${parts.join(" and ")}]`
+      });
+    }
+  });
+
+  return xpaths;
+}
+
 function generateXPaths(el) {
   if (!el) return [];
   const tag = el.tagName.toLowerCase();
   const xpaths = [];
 
-  // 1️⃣ Attribuut-gebaseerd (TOP PRIORITEIT)
+  // 1️⃣ Attribuut-gebaseerd (enkele attributen)
   for (const attr of ATTR_PRIORITY) {
-    if (el.getAttribute(attr)) {
+    const val = el.getAttribute(attr);
+    if (val) {
       xpaths.push({
         label: `@${attr}`,
-        xpath: `//${tag}[@${attr}=${escapeXPathValue(el.getAttribute(attr))}]`
+        xpath: `//${tag}[@${attr}=${escapeXPathValue(val)}]`
       });
     }
   }
 
   // 2️⃣ Tekst-gebaseerd (buttons, links, labels)
   const text = el.innerText?.trim();
-  if (
-    text &&
-    text.length > 0 &&
-    text.length <= 60 &&
-    ["button", "a", "label", "span"].includes(tag)
-  ) {
+  if (text && text.length > 0 && text.length <= 60 && ["button","a","label","span"].includes(tag)) {
     xpaths.push({
       label: "text",
       xpath: `//${tag}[normalize-space(.)=${escapeXPathValue(text)}]`
     });
   }
 
-  // 3️⃣ Relatief t.o.v. stabiele parent (WRAPPERS)
-  const stableParent = findStableParent(el);
-  if (stableParent && stableParent !== el) {
-    const parentXPath = generateParentXPath(stableParent);
-    const selector = tag === "div" || tag === "section" || tag === "li" || tag === "article"
-      ? `.${tag}` 
-      : tag;
-    if (text && text.length <= 60) {
-      xpaths.push({
-        label: "relative-parent",
-        xpath: `${parentXPath}//${tag}[normalize-space(.)=${escapeXPathValue(text)}]`
-      });
-    }
-    for (const attr of ATTR_PRIORITY) {
-      if (el.getAttribute(attr)) {
-        xpaths.push({
-          label: `relative-${attr}`,
-          xpath: `${parentXPath}//${tag}[@${attr}=${escapeXPathValue(el.getAttribute(attr))}]`
-        });
-      }
-    }
-  }
+  // 3️⃣ Twee combinaties van attributen
+  const combos = generateAttributeCombinations(el);
+  xpaths.push(...combos);
 
   // 4️⃣ Structurele fallback (absolute / semi-absolute)
   xpaths.push({
@@ -84,40 +92,6 @@ function generateXPaths(el) {
   });
 
   return xpaths;
-}
-
-// Zoek stabiele parent (id, data-*, role)
-function findStableParent(el) {
-  let parent = el.parentElement;
-  while (parent) {
-    for (const attr of ATTR_PRIORITY) {
-      if (parent.getAttribute(attr)) return parent;
-    }
-    parent = parent.parentElement;
-  }
-  return null;
-}
-
-// Genereer XPath van parent
-function generateParentXPath(el) {
-  if (!el) return "";
-  let path = "";
-  while (el && el.nodeType === 1) {
-    let index = 1;
-    let sibling = el.previousElementSibling;
-    while (sibling) {
-      if (sibling.tagName === el.tagName) index++;
-      sibling = sibling.previousElementSibling;
-    }
-    const tag = el.tagName.toLowerCase();
-    path = `/${tag}[${index}]` + path;
-    if (el.getAttribute("id")) {
-      path = `//${tag}[@id=${escapeXPathValue(el.getAttribute("id"))}]` + path;
-      break; // stop bij id
-    }
-    el = el.parentElement;
-  }
-  return path || "/";
 }
 
 // Absolute XPath fallback

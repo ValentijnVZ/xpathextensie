@@ -6,11 +6,10 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Klik op "Copy XPath" → submenu-items toevoegen
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === "copy-xpath-root") {
-    if (!tab.id) return;
+  if (!tab?.id) return;
 
+  if (info.menuItemId === "copy-xpath-root") {
     // Haal XPaths van content script
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -19,9 +18,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
     const xpaths = results[0].result || [];
 
-    // Verwijder oude submenu-items
+    // Verwijder oude submenu-items en hermaak root
     chrome.contextMenus.removeAll(() => {
-      // Hermaak root
       chrome.contextMenus.create({
         id: "copy-xpath-root",
         title: "Copy XPath",
@@ -38,8 +36,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         });
       });
     });
-  } else if (info.menuItemId.startsWith("xpath-") && tab.id) {
-    // Kopieer de geselecteerde XPath
+  } else if (info.menuItemId.startsWith("xpath-")) {
     const idx = parseInt(info.menuItemId.split("-")[1]);
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
