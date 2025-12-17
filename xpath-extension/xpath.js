@@ -71,7 +71,7 @@ function generateXPaths(el) {
   const tag = el.tagName.toLowerCase();
   const xpaths = [];
 
-  // 1️⃣ Attribuut-gebaseerd (enkele attributen)
+  // 1️⃣ Attribuut-gebaseerd
   for (const attr of ATTR_PRIORITY.concat(["value"])) {
     const val = el.getAttribute(attr);
     if (val) {
@@ -91,13 +91,11 @@ function generateXPaths(el) {
     });
   }
 
-  // 3️⃣ Combinaties van attributen
+  // 3️⃣ Combinaties
   const combos = generateAttributeCombinations(el);
   xpaths.push(...combos);
 
   // 4️⃣ Speciale gevallen
-
-  // <a> element met href + title
   if (tag === "a") {
     const href = el.getAttribute("href");
     const title = el.getAttribute("title");
@@ -109,7 +107,6 @@ function generateXPaths(el) {
     }
   }
 
-  // <input type="submit"> element
   if (tag === "input" && el.type === "submit") {
     const value = el.getAttribute("value") || "";
     xpaths.push({
@@ -118,7 +115,6 @@ function generateXPaths(el) {
     });
   }
 
-  // <input type="search"> element
   if (tag === "input" && el.type === "search") {
     const cls = el.getAttribute("class");
     const title = el.getAttribute("title");
@@ -127,7 +123,6 @@ function generateXPaths(el) {
       xpath: `//input[@type='search'${cls ? ` and @class=${escapeXPathValue(cls)}` : ""}${title ? ` and @title=${escapeXPathValue(title)}` : ""}]`
     });
 
-    // ✅ Container-based robust XPath (div contains class field)
     let parent = el.parentElement;
     while (parent) {
       const parentClass = parent.getAttribute("class");
@@ -142,7 +137,6 @@ function generateXPaths(el) {
     }
   }
 
-  // 5️⃣ Algemeen type+value XPath voor alle inputs
   if (tag === "input") {
     const val = el.getAttribute("value");
     if (val) {
@@ -153,7 +147,6 @@ function generateXPaths(el) {
     }
   }
 
-  // 6️⃣ <label> element met tekst
   if (tag === "label" && text) {
     xpaths.push({
       label: "label-text",
@@ -169,3 +162,4 @@ function generateXPaths(el) {
 
   return xpaths;
 }
+
