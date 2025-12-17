@@ -1,15 +1,19 @@
 let submenuIds = [];
 
+// Root menu aanmaken
 function createRootMenu() {
   chrome.contextMenus.create({
     id: "copy-xpath-root",
     title: "Copy XPath",
     contexts: ["all"]
   }, () => {
-    // duplicate id is oké; we negeren de fout
+    if (chrome.runtime.lastError) {
+      // duplicate id is oké
+    }
   });
 }
 
+// Submenu’s verwijderen
 function clearSubmenus() {
   for (const id of submenuIds) {
     try { chrome.contextMenus.remove(id); } catch {}
@@ -17,6 +21,7 @@ function clearSubmenus() {
   submenuIds = [];
 }
 
+// Submenu’s bouwen
 async function buildSubmenus(tabId) {
   const results = await chrome.scripting.executeScript({
     target: { tabId },
@@ -25,8 +30,10 @@ async function buildSubmenus(tabId) {
       catch { return []; }
     }
   });
+
   const xpaths = results?.[0]?.result || [];
   clearSubmenus();
+
   xpaths.forEach((x, idx) => {
     const id = `xpath-${idx}`;
     const title = typeof x?.xpath === "string"
@@ -42,16 +49,12 @@ async function buildSubmenus(tabId) {
   });
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  createRootMenu();
-});
-chrome.runtime.onStartup.addListener(() => {
-  createRootMenu();
-});
-
-// Zorg dat het menu er is zodra de SW start
+// Root menu bij installatie en opstart
+chrome.runtime.onInstalled.addListener(() => { createRootMenu(); });
+chrome.runtime.onStartup.addListener(() => { createRootMenu(); });
 createRootMenu();
 
+// Update submenu’s bij tonen
 chrome.contextMenus.onShown.addListener(async (info, tab) => {
   if (!tab?.id) return;
   createRootMenu();
@@ -59,6 +62,7 @@ chrome.contextMenus.onShown.addListener(async (info, tab) => {
   try { chrome.contextMenus.refresh(); } catch {}
 });
 
+// Kopieer XPath bij klik
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab?.id) return;
   if (info.menuItemId.startsWith("xpath-")) {
