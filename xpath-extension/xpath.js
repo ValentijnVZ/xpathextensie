@@ -1,7 +1,3 @@
-// ============================
-// xpath.js
-// ============================
-
 const ATTR_PRIORITY = [
   "id", "data-testid", "data-test", "data-cy",
   "name", "aria-label", "title", "placeholder",
@@ -22,12 +18,7 @@ function escapeXPathValue(value) {
 function generateAttributeCombinations(el) {
   const xpaths = [];
   const tag = el.tagName.toLowerCase();
-
-  const combinations = [
-    ["name", "class"],
-    ["aria-label", "class"]
-  ];
-
+  const combinations = [["name", "class"], ["aria-label", "class"]];
   combinations.forEach((attrs) => {
     const parts = [];
     const labelParts = [];
@@ -45,7 +36,6 @@ function generateAttributeCombinations(el) {
       });
     }
   });
-
   return xpaths;
 }
 
@@ -71,7 +61,6 @@ function generateXPaths(el) {
   const tag = el.tagName.toLowerCase();
   const xpaths = [];
 
-  // 1️⃣ Attribuut-gebaseerd
   for (const attr of ATTR_PRIORITY.concat(["value"])) {
     const val = el.getAttribute(attr);
     if (val) {
@@ -82,7 +71,6 @@ function generateXPaths(el) {
     }
   }
 
-  // 2️⃣ Tekst-gebaseerd
   const text = el.innerText?.trim();
   if (text && text.length > 0 && text.length <= 60 && ["button","a","label","span"].includes(tag)) {
     xpaths.push({
@@ -91,11 +79,8 @@ function generateXPaths(el) {
     });
   }
 
-  // 3️⃣ Combinaties
-  const combos = generateAttributeCombinations(el);
-  xpaths.push(...combos);
+  xpaths.push(...generateAttributeCombinations(el));
 
-  // 4️⃣ Speciale gevallen
   if (tag === "a") {
     const href = el.getAttribute("href");
     const title = el.getAttribute("title");
@@ -122,7 +107,6 @@ function generateXPaths(el) {
       label: "search-input",
       xpath: `//input[@type='search'${cls ? ` and @class=${escapeXPathValue(cls)}` : ""}${title ? ` and @title=${escapeXPathValue(title)}` : ""}]`
     });
-
     let parent = el.parentElement;
     while (parent) {
       const parentClass = parent.getAttribute("class");
@@ -154,7 +138,6 @@ function generateXPaths(el) {
     });
   }
 
-  // 7️⃣ Structurele fallback
   xpaths.push({
     label: "fallback",
     xpath: getAbsoluteXPath(el)
@@ -162,4 +145,3 @@ function generateXPaths(el) {
 
   return xpaths;
 }
-
