@@ -1,19 +1,10 @@
-{
-  "manifest_version": 3,
-  "name": "Smart XPath (per element)",
-  "version": "1.0",
-  "permissions": [
-    "contextMenus",
-    "activeTab",
-    "scripting",
-    "clipboardWrite"
-  ],
-  "host_permissions": ["<all_urls>"],
-  "background": { "service_worker": "background.js" },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js", "xpath.js"]
-    }
-  ]
-}
+let lastElement = null;
+
+document.addEventListener("contextmenu", e => {
+  lastElement = e.target;
+});
+
+window.getLastElementXPaths = () => {
+  if (!lastElement) return [];
+  return generateXPaths(lastElement); // uit xpath.js
+};
