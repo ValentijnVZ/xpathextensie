@@ -1,7 +1,6 @@
-// ...existing code...
 let submenuIds = [];
 
-// Maak root menu bij installatie
+// Root menu bij installatie
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "copy-xpath-root",
@@ -10,86 +9,66 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Update submenu-items op verzoek (v.b. vanuit content script)
-chrome.runtime.onMessage.addListener(async (msg, sender) => {
-  if (msg.type === "update-xpath-menu" && sender.tab?.id) {
-    const tabId = sender.tab.id;
+// Verwijder helper: alle submenu's
+function clearSubmenus() {
+  for (const id of submenuIds) {
     try {
-      const results = await chrome.scripting.executeScript({
-        target: { tabId },
-        func: () => window.getLastElementXPaths()
-      });
-      const xpaths = results?.[0]?.result || [];
-
-      // Verwijder oude submenu-items
-      for (const id of submenuIds) {
-        try { chrome.contextMenus.remove(id); } catch (e) { /* ignore */ }
-      }
-      submenuIds = [];
-
-      // Voeg nieuwe submenu-items toe
-      xpaths.forEach((x, idx) => {
-        const id = `xpath-${idx}`;
-        chrome.contextMenus.create({
-          id,
-          parentId: "copy-xpath-root",
-          title: x.xpath,
-          contexts: ["all"]
-        });
-        submenuIds.push(id);
-      });
+      chrome.contextMenus.remove(id);
     } catch (e) {
-      console.error("Fout bij update-xpath-menu:", e);
+      // negeren als item al weg is
     }
   }
-});
+  submenuIds = [];
+}
 
-// NIEUW: update menu direct wanneer het contextmenu wordt geopend
+// Bouw submenu's uit XPaths
+async function buildSubmenus(tabId) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => window.getLastElementXPaths()
+  });
+
+  const xpaths = results?.[0]?.result || [];
+
+  clearSubmenus();
+
+  xpaths.forEach((x, idx) => {
+    const id = `xpath-${idx}`;
+    // Let op: titel kan lang zijn, desnoods inkorten
+    const title = x.xpath.length > 120 ? x.xpath.slice(0, 117) + "..." : x.xpath;
+
+    chrome.contextMenus.create({
+      id,
+      parentId: "copy-xpath-root",
+      title,
+      contexts: ["all"]
+    });
+
+    submenuIds.push(id);
+  });
+}
+
+// Dynamische update precies bij tonen
 chrome.contextMenus.onShown.addListener(async (info, tab) => {
   if (!tab?.id) return;
-  if (!info.menuIds || !info.menuIds.includes("copy-xpath-root")) return;
 
-  try {
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => window.getLastElementXPaths()
-    });
-    const xpaths = results?.[0]?.result || [];
+  await buildSubmenus(tab.id);
 
-    for (const id of submenuIds) {
-      try { chrome.contextMenus.remove(id); } catch (e) { /* ignore */ }
-    }
-    submenuIds = [];
-
-    xpaths.forEach((x, idx) => {
-      const id = `xpath-${idx}`;
-      chrome.contextMenus.create({
-        id,
-        parentId: "copy-xpath-root",
-        title: x.xpath,
-        contexts: ["all"]
-      });
-      submenuIds.push(id);
-    });
-
-    // Zorg dat Chrome het menu ververst zodat nieuwe items zichtbaar zijn
-    try { chrome.contextMenus.refresh(); } catch (e) { /* refresh niet ondersteund? */ }
-  } catch (e) {
-    console.error("Fout bij onShown update:", e);
-  }
+  // Forceer redraw zodat nieuwe items direct zichtbaar zijn
+  chrome.contextMenus.refresh();
 });
 
 // Kopieer XPath naar clipboard bij klikken
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab?.id) return;
-  if (!info.menuItemId || !info.menuItemId.startsWith("xpath-")) return;
 
-  const idx = parseInt(info.menuItemId.split("-")[1]);
-  try {
+  if (info.menuItemId.startsWith("xpath-")) {
+    const idx = parseInt(info.menuItemId.split("-")[1], 10);
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => window.getLastElementXPaths()
     });
+
     const xpaths = results?.[0]?.result || [];
     if (xpaths[idx]) {
       await chrome.scripting.executeScript({
@@ -98,8 +77,5 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         args: [xpaths[idx].xpath]
       });
     }
-  } catch (e) {
-    console.error("Fout bij copy-to-clipboard:", e);
   }
 });
-// ...existing code...
