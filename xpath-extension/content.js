@@ -1,6 +1,6 @@
 let lastElement = null;
 
-document.addEventListener("contextmenu", e => {
+document.addEventListener("mouseover", e => {
   lastElement = e.target;
 
   // Stuur een bericht naar background om menu te updaten
