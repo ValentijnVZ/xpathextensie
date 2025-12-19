@@ -167,24 +167,31 @@ function generateXPaths(el) {
     });
   }
 
-  // 7️⃣ Universele wrapper/ancestor XPaths
-  let ancestor = el.parentElement;
-  while (ancestor) {
-    const cls = ancestor.getAttribute("class");
-    const ancTag = ancestor.tagName.toLowerCase();
-    if (cls) {
-      xpaths.push({
-        label: `ancestor-${ancTag}-class`,
-        xpath: `//${ancTag}[contains(@class,${escapeXPathValue(cls)})]//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
-      });
-    } else {
-      xpaths.push({
-        label: `ancestor-${ancTag}`,
-        xpath: `//${ancTag}//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
+ 
+// 7️⃣ ROBUSTE div-wrapper XPaths (max 5, uniek)
+const divXPaths = [];
+const seenDivs = new Set();
+let ancestor = el.parentElement;
+
+while (ancestor && divXPaths.length < 5) {
+  if (ancestor.tagName.toLowerCase() === "div") {
+    const cls = getBestStableClass(ancestor.getAttribute("class") || "");
+
+    if (cls && !seenDivs.has(cls)) {
+      seenDivs.add(cls);
+
+      divXPaths.push({
+        label: "div-wrapper",
+        xpath: `//div[contains(@class,${escapeXPathValue(cls)})]//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
       });
     }
-    ancestor = ancestor.parentElement;
   }
+  ancestor = ancestor.parentElement;
+}
+
+// voeg ze in één keer toe
+xpaths.push(...divXPaths);
+
 
   // 8️⃣ Combinatie van attributen + tekst
   const attrCombo = [];
