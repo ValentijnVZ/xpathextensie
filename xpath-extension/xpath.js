@@ -1,5 +1,5 @@
 // ============================
-// xpath.js
+// xpath.js (EXTENSION SAFE)
 // ============================
 
 const ATTR_PRIORITY = [
@@ -8,7 +8,9 @@ const ATTR_PRIORITY = [
   "href", "src", "type", "role", "class"
 ];
 
+// ============================
 // Escape waarde voor XPath
+// ============================
 function escapeXPathValue(value) {
   if (!value) return "";
   if (value.includes('"') && value.includes("'")) {
@@ -20,38 +22,38 @@ function escapeXPathValue(value) {
   }
 }
 
-// Combinaties van attributen
-function generateAttributeCombinations(el) {
-  const xpaths = [];
-  const tag = el.tagName.toLowerCase();
-
-  const combinations = [
-    ["name", "class"],
-    ["aria-label", "class"]
-  ];
-
-  combinations.forEach((attrs) => {
-    const parts = [];
-    const labelParts = [];
-    attrs.forEach(attr => {
-      const val = el.getAttribute(attr);
-      if (val) {
-        parts.push(`@${attr}=${escapeXPathValue(val)}`);
-        labelParts.push(`@${attr}`);
-      }
-    });
-    if (parts.length === attrs.length) {
-      xpaths.push({
-        label: labelParts.join(" + "),
-        xpath: `//${tag}[${parts.join(" and ")}]`
-      });
-    }
-  });
-
-  return xpaths;
+// ============================
+// Check of XPath werkt (Inspect)
+// ============================
+function xpathWorks(xpath) {
+  try {
+    const res = document.evaluate(
+      xpath,
+      document,
+      null,
+      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+      null
+    );
+    return res.snapshotLength > 0;
+  } catch {
+    return false;
+  }
 }
 
-// Absolute XPath
+// ============================
+// Veilige tekst (GEEN containers)
+// ============================
+function safeText(el) {
+  if (!el) return "";
+  const txt = el.textContent.replace(/\s+/g, " ").trim();
+  if (txt.length < 5 || txt.length > 40) return "";
+  if (el.children.length > 0) return "";
+  return txt;
+}
+
+// ============================
+// Absolute XPath (fallback)
+// ============================
 function getAbsoluteXPath(el) {
   if (!el) return "";
   const parts = [];
@@ -62,148 +64,130 @@ function getAbsoluteXPath(el) {
       if (sibling.tagName === el.tagName) index++;
       sibling = sibling.previousElementSibling;
     }
-    const tag = el.tagName.toLowerCase();
-    parts.unshift(`${tag}[${index}]`);
+    parts.unshift(`${el.tagName.toLowerCase()}[${index}]`);
     el = el.parentElement;
   }
   return "/" + parts.join("/");
 }
 
 // ============================
+// Attribuut combinaties
+// ============================
+function generateAttributeCombinations(el) {
+  const xpaths = [];
+  const tag = el.tagName.toLowerCase();
+
+  const combinations = [
+    ["name", "class"],
+    ["aria-label", "class"]
+  ];
+
+  combinations.forEach(attrs => {
+    const parts = [];
+    attrs.forEach(attr => {
+      const val = el.getAttribute(attr);
+      if (val) {
+        parts.push(
+          attr === "class"
+            ? `contains(@class,${escapeXPathValue(val.split(" ")[0])})`
+            : `@${attr}=${escapeXPathValue(val)}`
+        );
+      }
+    });
+
+    if (parts.length === attrs.length) {
+      const xp = `//${tag}[${parts.join(" and ")}]`;
+      if (xpathWorks(xp)) {
+        xpaths.push({ label: attrs.join("+"), xpath: xp });
+      }
+    }
+  });
+
+  return xpaths;
+}
+
+// ============================
 // Universele XPath generator
 // ============================
 function generateXPaths(el) {
-  if (!el) return [];
+  if (!el || el.nodeType !== 1) return [];
+
   const tag = el.tagName.toLowerCase();
   const xpaths = [];
-  const text = el.innerText?.trim();
+  const text = safeText(el);
 
   // 1️⃣ Attribuut-gebaseerd
   for (const attr of ATTR_PRIORITY.concat(["value"])) {
     const val = el.getAttribute(attr);
-    if (val) {
-      xpaths.push({
-        label: `@${attr}`,
-        xpath: `//${tag}[@${attr}=${escapeXPathValue(val)}]`
-      });
+    if (!val) continue;
+
+    const xp =
+      attr === "class"
+        ? `//${tag}[contains(@class,${escapeXPathValue(val.split(" ")[0])})]`
+        : `//${tag}[@${attr}=${escapeXPathValue(val)}]`;
+
+    if (xpathWorks(xp)) {
+      xpaths.push({ label: `@${attr}`, xpath: xp });
     }
   }
 
-  // 2️⃣ Tekst-gebaseerd
-  if (text && text.length > 0 && text.length <= 100) {
-    xpaths.push({
-      label: "text",
-      xpath: `//${tag}[normalize-space(.)=${escapeXPathValue(text)}]`
-    });
+  // 2️⃣ Tekst-gebaseerd (GEEN exact)
+  if (text) {
+    const xp = `//${tag}[contains(normalize-space(.),${escapeXPathValue(text)})]`;
+    if (xpathWorks(xp)) {
+      xpaths.push({ label: "text", xpath: xp });
+    }
   }
 
-  // 3️⃣ Combinaties van attributen
-  const combos = generateAttributeCombinations(el);
-  xpaths.push(...combos);
+  // 3️⃣ Attribuut combinaties
+  xpaths.push(...generateAttributeCombinations(el));
 
   // 4️⃣ Speciale gevallen
-
-  // <a> element met href + title
   if (tag === "a") {
     const href = el.getAttribute("href");
-    const title = el.getAttribute("title");
-    if (href && title) {
-      xpaths.push({
-        label: "special-a",
-        xpath: `//a[@href=${escapeXPathValue(href)} and @title=${escapeXPathValue(title)}]`
-      });
-    }
-  }
-
-  // <input type="submit"> element
-  if (tag === "input" && el.type === "submit") {
-    const value = el.getAttribute("value") || "";
-    xpaths.push({
-      label: "submit-button",
-      xpath: `//input[@type='submit' and @value=${escapeXPathValue(value)}]`
-    });
-  }
-
-  // <input type="search"> element
-  if (tag === "input" && el.type === "search") {
-    const cls = el.getAttribute("class");
-    const title = el.getAttribute("title");
-    xpaths.push({
-      label: "search-input",
-      xpath: `//input[@type='search'${cls ? ` and @class=${escapeXPathValue(cls)}` : ""}${title ? ` and @title=${escapeXPathValue(title)}` : ""}]`
-    });
-
-    // Container-based robust XPath (div contains class field)
-    let parent = el.parentElement;
-    while (parent) {
-      const parentClass = parent.getAttribute("class");
-      if (parentClass && parentClass.includes("field")) {
-        xpaths.push({
-          label: "container-div-field",
-          xpath: `//div[contains(@class,'field')]//input[@type='search']`
-        });
-        break;
+    if (href) {
+      const xp = `//a[@href=${escapeXPathValue(href)}]`;
+      if (xpathWorks(xp)) {
+        xpaths.push({ label: "link-href", xpath: xp });
       }
-      parent = parent.parentElement;
     }
   }
 
-  // 5️⃣ Algemeen type+value XPath voor alle inputs
-  if (tag === "input") {
+  if (tag === "input" && el.type === "submit") {
     const val = el.getAttribute("value");
     if (val) {
-      xpaths.push({
-        label: "type-value",
-        xpath: `//input[@type='${el.type}' and @value=${escapeXPathValue(val)}]`
-      });
+      const xp = `//input[@type='submit' and @value=${escapeXPathValue(val)}]`;
+      if (xpathWorks(xp)) {
+        xpaths.push({ label: "submit", xpath: xp });
+      }
     }
   }
 
-  // 6️⃣ <label> element met tekst
-  if (tag === "label" && text) {
-    xpaths.push({
-      label: "label-text",
-      xpath: `//label[normalize-space(text())=${escapeXPathValue(text)}]`
-    });
-  }
-
-  // 7️⃣ Universele wrapper/ancestor XPaths
-  let ancestor = el.parentElement;
-  while (ancestor) {
-    const cls = ancestor.getAttribute("class");
-    const ancTag = ancestor.tagName.toLowerCase();
+  // 5️⃣ Parent → child (GEEN div/div)
+  const parent = el.parentElement;
+  if (parent && parent.tagName !== el.tagName) {
+    const cls = parent.getAttribute("class");
     if (cls) {
-      xpaths.push({
-        label: `ancestor-${ancTag}-class`,
-        xpath: `//${ancTag}[contains(@class,${escapeXPathValue(cls)})]//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
-      });
-    } else {
-      xpaths.push({
-        label: `ancestor-${ancTag}`,
-        xpath: `//${ancTag}//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
-      });
+      const xp = `//${parent.tagName.toLowerCase()}[contains(@class,${escapeXPathValue(
+        cls.split(" ")[0]
+      )})]//${tag}`;
+      if (xpathWorks(xp)) {
+        xpaths.push({ label: "parent-child", xpath: xp });
+      }
     }
-    ancestor = ancestor.parentElement;
   }
 
-  // 8️⃣ Combinatie van attributen + tekst
-  const attrCombo = [];
-  for (const attr of ["id","name","aria-label","title"]) {
-    const val = el.getAttribute(attr);
-    if (val) attrCombo.push(`@${attr}=${escapeXPathValue(val)}`);
-  }
-  if (attrCombo.length && text) {
-    xpaths.push({
-      label: "attr+text",
-      xpath: `//${tag}[${attrCombo.join(" and ")} and normalize-space(.)=${escapeXPathValue(text)}]`
-    });
+  // 6️⃣ Absolute fallback
+  const abs = getAbsoluteXPath(el);
+  if (xpathWorks(abs)) {
+    xpaths.push({ label: "absolute", xpath: abs });
   }
 
-  // 9️⃣ Structurele fallback (absolute XPath)
-  xpaths.push({
-    label: "fallback",
-    xpath: getAbsoluteXPath(el)
+  // Duplicaten verwijderen
+  const seen = new Set();
+  return xpaths.filter(x => {
+    if (seen.has(x.xpath)) return false;
+    seen.add(x.xpath);
+    return true;
   });
-
-  return xpaths;
 }
