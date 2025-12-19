@@ -20,6 +20,25 @@ function escapeXPathValue(value) {
   }
 }
 
+
+// ============================
+// Check of XPath werkt (Inspect)
+// ============================
+function xpathWorks(xpath) {
+  try {
+    const res = document.evaluate(
+      xpath,
+      document,
+      null,
+      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+      null
+    );
+    return res.snapshotLength > 0;
+  } catch {
+    return false;
+  }
+}
+
 // Combinaties van attributen
 function generateAttributeCombinations(el) {
   const xpaths = [];
