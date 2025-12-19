@@ -8,7 +8,10 @@ const ATTR_PRIORITY = [
   "href", "src", "type", "role", "class"
 ];
 
-// Escape waarde voor XPath
+// ============================
+// Helpers
+// ============================
+
 function escapeXPathValue(value) {
   if (!value) return "";
   if (value.includes('"') && value.includes("'")) {
@@ -20,7 +23,27 @@ function escapeXPathValue(value) {
   }
 }
 
-// Combinaties van attributen
+// ❌ instabiele / layout classes
+const BAD_CLASS_REGEX =
+  /(col-|row-|grid|layout|container-|wrapper-|header|footer|main|section|nav|aside|__|\d)/i;
+
+function isStableClass(cls) {
+  if (!cls) return false;
+  if (cls.length < 4) return false;
+  return !BAD_CLASS_REGEX.test(cls);
+}
+
+function getBestStableClass(classAttr) {
+  if (!classAttr) return null;
+  return classAttr
+    .split(/\s+/)
+    .find(cls => isStableClass(cls)) || null;
+}
+
+// ============================
+// Attribute combinaties
+// ============================
+
 function generateAttributeCombinations(el) {
   const xpaths = [];
   const tag = el.tagName.toLowerCase();
@@ -30,19 +53,16 @@ function generateAttributeCombinations(el) {
     ["aria-label", "class"]
   ];
 
-  combinations.forEach((attrs) => {
+  combinations.forEach(attrs => {
     const parts = [];
-    const labelParts = [];
     attrs.forEach(attr => {
       const val = el.getAttribute(attr);
-      if (val) {
-        parts.push(`@${attr}=${escapeXPathValue(val)}`);
-        labelParts.push(`@${attr}`);
-      }
+      if (val) parts.push(`@${attr}=${escapeXPathValue(val)}`);
     });
+
     if (parts.length === attrs.length) {
       xpaths.push({
-        label: labelParts.join(" + "),
+        label: "attr-combo",
         xpath: `//${tag}[${parts.join(" and ")}]`
       });
     }
@@ -51,35 +71,19 @@ function generateAttributeCombinations(el) {
   return xpaths;
 }
 
-// Absolute XPath
-function getAbsoluteXPath(el) {
-  if (!el) return "";
-  const parts = [];
-  while (el && el.nodeType === 1) {
-    let index = 1;
-    let sibling = el.previousElementSibling;
-    while (sibling) {
-      if (sibling.tagName === el.tagName) index++;
-      sibling = sibling.previousElementSibling;
-    }
-    const tag = el.tagName.toLowerCase();
-    parts.unshift(`${tag}[${index}]`);
-    el = el.parentElement;
-  }
-  return "/" + parts.join("/");
-}
-
 // ============================
 // Universele XPath generator
 // ============================
+
 function generateXPaths(el) {
   if (!el) return [];
-  const tag = el.tagName.toLowerCase();
-  const xpaths = [];
-  const text = el.innerText?.trim();
 
-  // 1️⃣ Attribuut-gebaseerd
-  for (const attr of ATTR_PRIORITY.concat(["value"])) {
+  const tag = el.tagName.toLowerCase();
+  const text = el.innerText?.trim();
+  const xpaths = [];
+
+  // 1️⃣ Enkel attribuut (sterkste)
+  for (const attr of ATTR_PRIORITY) {
     const val = el.getAttribute(attr);
     if (val) {
       xpaths.push({
@@ -90,115 +94,72 @@ function generateXPaths(el) {
   }
 
   // 2️⃣ Tekst-gebaseerd
-  if (text && text.length > 0 && text.length <= 100) {
+  if (text && text.length <= 100) {
     xpaths.push({
       label: "text",
       xpath: `//${tag}[normalize-space(.)=${escapeXPathValue(text)}]`
     });
   }
 
-  // 3️⃣ Combinaties van attributen
-  const combos = generateAttributeCombinations(el);
-  xpaths.push(...combos);
+  // 3️⃣ Attribuut combinaties
+  xpaths.push(...generateAttributeCombinations(el));
 
-  // 4️⃣ Speciale gevallen
-
-  // <a> element met href + title
+  // 4️⃣ Speciale types
   if (tag === "a") {
     const href = el.getAttribute("href");
-    const title = el.getAttribute("title");
-    if (href && title) {
+    if (href) {
       xpaths.push({
-        label: "special-a",
-        xpath: `//a[@href=${escapeXPathValue(href)} and @title=${escapeXPathValue(title)}]`
+        label: "link-href",
+        xpath: `//a[@href=${escapeXPathValue(href)}]`
       });
     }
   }
 
-  // <input type="submit"> element
-  if (tag === "input" && el.type === "submit") {
-    const value = el.getAttribute("value") || "";
+  if (tag === "input" && el.type) {
     xpaths.push({
-      label: "submit-button",
-      xpath: `//input[@type='submit' and @value=${escapeXPathValue(value)}]`
+      label: "input-type",
+      xpath: `//input[@type='${el.type}']`
     });
   }
 
-  // <input type="search"> element
-  if (tag === "input" && el.type === "search") {
-    const cls = el.getAttribute("class");
-    const title = el.getAttribute("title");
-    xpaths.push({
-      label: "search-input",
-      xpath: `//input[@type='search'${cls ? ` and @class=${escapeXPathValue(cls)}` : ""}${title ? ` and @title=${escapeXPathValue(title)}` : ""}]`
-    });
+  // ============================
+  // 5️⃣ ROBUSTE DIV-WRAPPERS (max 5)
+  // ============================
 
-    // Container-based robust XPath (div contains class field)
-    let parent = el.parentElement;
-    while (parent) {
-      const parentClass = parent.getAttribute("class");
-      if (parentClass && parentClass.includes("field")) {
-        xpaths.push({
-          label: "container-div-field",
-          xpath: `//div[contains(@class,'field')]//input[@type='search']`
+  const divXPaths = [];
+  const seenClasses = new Set();
+  let parent = el.parentElement;
+
+  while (parent && divXPaths.length < 5) {
+    if (parent.tagName.toLowerCase() === "div") {
+      const stableClass = getBestStableClass(parent.getAttribute("class"));
+
+      if (stableClass && !seenClasses.has(stableClass)) {
+        seenClasses.add(stableClass);
+
+        divXPaths.push({
+          label: "div-wrapper",
+          xpath: `//div[contains(@class,${escapeXPathValue(stableClass)})]//${tag}${
+            text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""
+          }`
         });
-        break;
       }
-      parent = parent.parentElement;
     }
+    parent = parent.parentElement;
   }
 
-  // 5️⃣ Algemeen type+value XPath voor alle inputs
-  if (tag === "input") {
-    const val = el.getAttribute("value");
-    if (val) {
-      xpaths.push({
-        label: "type-value",
-        xpath: `//input[@type='${el.type}' and @value=${escapeXPathValue(val)}]`
-      });
-    }
-  }
+  xpaths.push(...divXPaths);
 
-  // 6️⃣ <label> element met tekst
-  if (tag === "label" && text) {
-    xpaths.push({
-      label: "label-text",
-      xpath: `//label[normalize-space(text())=${escapeXPathValue(text)}]`
-    });
-  }
+  // ============================
+  // 6️⃣ Combinatie van attributen + tekst  ✅ (BEHOUDEN)
+  // ============================
 
- 
-// 7️⃣ ROBUSTE div-wrapper XPaths (max 5, uniek)
-const divXPaths = [];
-const seenDivs = new Set();
-let ancestor = el.parentElement;
-
-while (ancestor && divXPaths.length < 5) {
-  if (ancestor.tagName.toLowerCase() === "div") {
-    const cls = getBestStableClass(ancestor.getAttribute("class") || "");
-
-    if (cls && !seenDivs.has(cls)) {
-      seenDivs.add(cls);
-
-      divXPaths.push({
-        label: "div-wrapper",
-        xpath: `//div[contains(@class,${escapeXPathValue(cls)})]//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
-      });
-    }
-  }
-  ancestor = ancestor.parentElement;
-}
-
-// voeg ze in één keer toe
-xpaths.push(...divXPaths);
-
-
-  // 8️⃣ Combinatie van attributen + tekst
   const attrCombo = [];
   for (const attr of ["id","name","aria-label","title"]) {
     const val = el.getAttribute(attr);
     if (val) attrCombo.push(`@${attr}=${escapeXPathValue(val)}`);
   }
+
   if (attrCombo.length && text) {
     xpaths.push({
       label: "attr+text",
@@ -206,11 +167,7 @@ xpaths.push(...divXPaths);
     });
   }
 
-  // 9️⃣ Structurele fallback (absolute XPath)
-  xpaths.push({
-    label: "fallback",
-    xpath: getAbsoluteXPath(el)
-  });
+  // ❌ GEEN fallback meer
 
   return xpaths;
 }
