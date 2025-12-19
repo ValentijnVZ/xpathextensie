@@ -199,6 +199,11 @@ function generateXPaths(el) {
     });
   }
 
+  // 9️⃣ Structurele fallback (absolute XPath)
+  xpaths.push({
+    label: "fallback",
+    xpath: getAbsoluteXPath(el)
+  });
 
   return xpaths;
 }
