@@ -20,35 +20,20 @@ function escapeXPathValue(value) {
   }
 }
 
-// Combinaties van attributen
-function generateAttributeCombinations(el) {
-  const xpaths = [];
-  const tag = el.tagName.toLowerCase();
-
-  const combinations = [
-    ["name", "class"],
-    ["aria-label", "class"]
-  ];
-
-  combinations.forEach((attrs) => {
-    const parts = [];
-    const labelParts = [];
-    attrs.forEach(attr => {
-      const val = el.getAttribute(attr);
-      if (val) {
-        parts.push(`@${attr}=${escapeXPathValue(val)}`);
-        labelParts.push(`@${attr}`);
-      }
-    });
-    if (parts.length === attrs.length) {
-      xpaths.push({
-        label: labelParts.join(" + "),
-        xpath: `//${tag}[${parts.join(" and ")}]`
-      });
-    }
-  });
-
-  return xpaths;
+// Test of XPath een element vindt
+function testXPath(xpath) {
+  try {
+    const result = document.evaluate(
+      xpath,
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null
+    );
+    return !!result.singleNodeValue;
+  } catch (e) {
+    return false;
+  }
 }
 
 // Absolute XPath
@@ -69,20 +54,34 @@ function getAbsoluteXPath(el) {
   return "/" + parts.join("/");
 }
 
-// ✅ Test of XPath een element vindt
-function testXPath(xpath) {
-  try {
-    const result = document.evaluate(
-      xpath,
-      document,
-      null,
-      XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
-    );
-    return !!result.singleNodeValue;
-  } catch (e) {
-    return false;
-  }
+// Combinaties van attributen
+function generateAttributeCombinations(el) {
+  const xpaths = [];
+  const tag = el.tagName.toLowerCase();
+  const combinations = [
+    ["name", "class"],
+    ["aria-label", "class"]
+  ];
+
+  combinations.forEach(attrs => {
+    const parts = [];
+    const labelParts = [];
+    attrs.forEach(attr => {
+      const val = el.getAttribute(attr);
+      if (val) {
+        parts.push(`@${attr}=${escapeXPathValue(val)}`);
+        labelParts.push(`@${attr}`);
+      }
+    });
+    if (parts.length === attrs.length) {
+      xpaths.push({
+        label: labelParts.join(" + "),
+        xpath: `//${tag}[${parts.join(" and ")}]`
+      });
+    }
+  });
+
+  return xpaths;
 }
 
 // ============================
@@ -145,17 +144,20 @@ function generateXPaths(el) {
       xpath: `//input[@type='search'${cls ? ` and @class=${escapeXPathValue(cls)}` : ""}${title ? ` and @title=${escapeXPathValue(title)}` : ""}]`
     });
 
+    // Container-div wrapper max 2 niveaus omhoog
     let parent = el.parentElement;
-    while (parent) {
+    let levelsUp = 0;
+    while (parent && levelsUp < 3) { // max 2-3 divs omhoog
       const parentClass = parent.getAttribute("class");
-      if (parentClass && parentClass.includes("field")) {
+      if (parent && parent.tagName.toLowerCase() === "div" && parentClass) {
         xpaths.push({
           label: "container-div-field",
-          xpath: `//div[contains(@class,'field')]//input[@type='search']`
+          xpath: `//div[contains(@class,'${parentClass}')]//input[@type='search']`
         });
         break;
       }
       parent = parent.parentElement;
+      levelsUp++;
     }
   }
 
@@ -178,21 +180,18 @@ function generateXPaths(el) {
     });
   }
 
-  // 7️⃣ Universele wrapper/ancestor XPaths
+  // 7️⃣ Universele wrapper-div XPaths (max 2 niveaus, alleen div met class)
   let ancestor = el.parentElement;
-  while (ancestor) {
-    const cls = ancestor.getAttribute("class");
+  let divLevels = 0;
+  while (ancestor && divLevels < 3) { // max 2 divs omhoog
     const ancTag = ancestor.tagName.toLowerCase();
-    if (cls) {
+    const cls = ancestor.getAttribute("class");
+    if (ancTag === "div" && cls) {
       xpaths.push({
-        label: `ancestor-${ancTag}-class`,
-        xpath: `//${ancTag}[contains(@class,${escapeXPathValue(cls)})]//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
+        label: `ancestor-div-class`,
+        xpath: `//div[contains(@class,${escapeXPathValue(cls)})]//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
       });
-    } else {
-      xpaths.push({
-        label: `ancestor-${ancTag}`,
-        xpath: `//${ancTag}//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
-      });
+      divLevels++;
     }
     ancestor = ancestor.parentElement;
   }
@@ -216,6 +215,11 @@ function generateXPaths(el) {
     xpath: getAbsoluteXPath(el)
   });
 
-  // ✅ Filter XPaths die niet werken
-  return xpaths.filter(x => testXPath(x.xpath));
+  // ✅ Filter XPaths die niet werken + geen html/body + divs moeten contain class hebben
+  return xpaths.filter(x => {
+    if (!testXPath(x.xpath)) return false;
+    if (x.xpath.startsWith("/html") || x.xpath.startsWith("/body")) return false;
+    if (x.xpath.includes("//div") && !/contains\(@class/.test(x.xpath)) return false;
+    return true;
+  });
 }
