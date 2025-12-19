@@ -8,6 +8,7 @@ const ATTR_PRIORITY = [
   "href", "src", "type", "role", "class"
 ];
 
+// Escape waarde voor XPath
 function escapeXPathValue(value) {
   if (!value) return "";
   if (value.includes('"') && value.includes("'")) {
@@ -19,6 +20,7 @@ function escapeXPathValue(value) {
   }
 }
 
+// Combinaties van attributen
 function generateAttributeCombinations(el) {
   const xpaths = [];
   const tag = el.tagName.toLowerCase();
@@ -49,6 +51,7 @@ function generateAttributeCombinations(el) {
   return xpaths;
 }
 
+// Absolute XPath
 function getAbsoluteXPath(el) {
   if (!el) return "";
   const parts = [];
@@ -66,12 +69,16 @@ function getAbsoluteXPath(el) {
   return "/" + parts.join("/");
 }
 
+// ============================
+// Universele XPath generator
+// ============================
 function generateXPaths(el) {
   if (!el) return [];
   const tag = el.tagName.toLowerCase();
   const xpaths = [];
+  const text = el.innerText?.trim();
 
-  // 1️⃣ Attribuut-gebaseerd (enkele attributen)
+  // 1️⃣ Attribuut-gebaseerd
   for (const attr of ATTR_PRIORITY.concat(["value"])) {
     const val = el.getAttribute(attr);
     if (val) {
@@ -83,8 +90,7 @@ function generateXPaths(el) {
   }
 
   // 2️⃣ Tekst-gebaseerd
-  const text = el.innerText?.trim();
-  if (text && text.length > 0 && text.length <= 60 && ["button","a","label","span"].includes(tag)) {
+  if (text && text.length > 0 && text.length <= 100) {
     xpaths.push({
       label: "text",
       xpath: `//${tag}[normalize-space(.)=${escapeXPathValue(text)}]`
@@ -127,7 +133,7 @@ function generateXPaths(el) {
       xpath: `//input[@type='search'${cls ? ` and @class=${escapeXPathValue(cls)}` : ""}${title ? ` and @title=${escapeXPathValue(title)}` : ""}]`
     });
 
-    // ✅ Container-based robust XPath (div contains class field)
+    // Container-based robust XPath (div contains class field)
     let parent = el.parentElement;
     while (parent) {
       const parentClass = parent.getAttribute("class");
@@ -161,7 +167,39 @@ function generateXPaths(el) {
     });
   }
 
-  // 7️⃣ Structurele fallback
+  // 7️⃣ Universele wrapper/ancestor XPaths
+  let ancestor = el.parentElement;
+  while (ancestor) {
+    const cls = ancestor.getAttribute("class");
+    const ancTag = ancestor.tagName.toLowerCase();
+    if (cls) {
+      xpaths.push({
+        label: `ancestor-${ancTag}-class`,
+        xpath: `//${ancTag}[contains(@class,${escapeXPathValue(cls)})]//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
+      });
+    } else {
+      xpaths.push({
+        label: `ancestor-${ancTag}`,
+        xpath: `//${ancTag}//${tag}${text ? `[normalize-space(.)=${escapeXPathValue(text)}]` : ""}`
+      });
+    }
+    ancestor = ancestor.parentElement;
+  }
+
+  // 8️⃣ Combinatie van attributen + tekst
+  const attrCombo = [];
+  for (const attr of ["id","name","aria-label","title"]) {
+    const val = el.getAttribute(attr);
+    if (val) attrCombo.push(`@${attr}=${escapeXPathValue(val)}`);
+  }
+  if (attrCombo.length && text) {
+    xpaths.push({
+      label: "attr+text",
+      xpath: `//${tag}[${attrCombo.join(" and ")} and normalize-space(.)=${escapeXPathValue(text)}]`
+    });
+  }
+
+  // 9️⃣ Structurele fallback (absolute XPath)
   xpaths.push({
     label: "fallback",
     xpath: getAbsoluteXPath(el)
