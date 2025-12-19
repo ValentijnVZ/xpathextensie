@@ -1,11 +1,12 @@
 // ============================
-// xpath.js (EXTENSION SAFE)
+// xpath.js (EXTENSION SAFE & GENERIC WRAPPER SUPPORT)
 // ============================
 
 const ATTR_PRIORITY = [
   "id", "data-testid", "data-test", "data-cy",
   "name", "aria-label", "title", "placeholder",
-  "href", "src", "type", "role", "class"
+  "href", "src", "type", "role", "class",
+  "aria-controls", "aria-expanded", "aria-hidden"
 ];
 
 // ============================
@@ -46,8 +47,8 @@ function xpathWorks(xpath) {
 function safeText(el) {
   if (!el) return "";
   const txt = el.textContent.replace(/\s+/g, " ").trim();
-  if (txt.length < 5 || txt.length > 40) return "";
-  if (el.children.length > 0) return "";
+  if (txt.length < 2 || txt.length > 100) return "";
+  if (el.children.length > 0 && el.tagName.toLowerCase() !== "span") return "";
   return txt;
 }
 
@@ -107,6 +108,39 @@ function generateAttributeCombinations(el) {
 }
 
 // ============================
+// Wrapper-div support (generiek)
+// ============================
+function generateWrapperXPaths(el) {
+  const xpaths = [];
+  if (el.tagName.toLowerCase() !== "div") return xpaths;
+
+  // Wrapper als meerdere belangrijke child elementen aanwezig zijn
+  const importantChildren = el.querySelectorAll("div,h2,h3,span,p,address,a");
+  if (importantChildren.length > 1) {
+    const cls = el.getAttribute("class");
+    let xp;
+    if (cls) {
+      xp = `//div[contains(@class,${escapeXPathValue(cls.split(" ")[0])})]`;
+    } else {
+      xp = getAbsoluteXPath(el);
+    }
+
+    if (xpathWorks(xp)) xpaths.push({ label: "wrapper-div", xpath: xp });
+
+    // Child-items binnen wrapper
+    importantChildren.forEach(child => {
+      const childText = safeText(child);
+      if (childText) {
+        const childXP = `${xp}//*[contains(normalize-space(.),${escapeXPathValue(childText)})]`;
+        if (xpathWorks(childXP)) xpaths.push({ label: "wrapper-child-text", xpath: childXP });
+      }
+    });
+  }
+
+  return xpaths;
+}
+
+// ============================
 // Universele XPath generator
 // ============================
 function generateXPaths(el) {
@@ -131,12 +165,10 @@ function generateXPaths(el) {
     }
   }
 
-  // 2️⃣ Tekst-gebaseerd (GEEN exact)
+  // 2️⃣ Tekst-gebaseerd
   if (text) {
     const xp = `//${tag}[contains(normalize-space(.),${escapeXPathValue(text)})]`;
-    if (xpathWorks(xp)) {
-      xpaths.push({ label: "text", xpath: xp });
-    }
+    if (xpathWorks(xp)) xpaths.push({ label: "text", xpath: xp });
   }
 
   // 3️⃣ Attribuut combinaties
@@ -147,8 +179,15 @@ function generateXPaths(el) {
     const href = el.getAttribute("href");
     if (href) {
       const xp = `//a[@href=${escapeXPathValue(href)}]`;
-      if (xpathWorks(xp)) {
-        xpaths.push({ label: "link-href", xpath: xp });
+      if (xpathWorks(xp)) xpaths.push({ label: "link-href", xpath: xp });
+    }
+
+    const childSpan = el.querySelector("span");
+    if (childSpan) {
+      const spanText = safeText(childSpan);
+      if (spanText) {
+        const xp = `//a[@href=${escapeXPathValue(href)}]//span[contains(normalize-space(.),${escapeXPathValue(spanText)})]`;
+        if (xpathWorks(xp)) xpaths.push({ label: "a+span-text", xpath: xp });
       }
     }
   }
@@ -157,27 +196,24 @@ function generateXPaths(el) {
     const val = el.getAttribute("value");
     if (val) {
       const xp = `//input[@type='submit' and @value=${escapeXPathValue(val)}]`;
-      if (xpathWorks(xp)) {
-        xpaths.push({ label: "submit", xpath: xp });
-      }
+      if (xpathWorks(xp)) xpaths.push({ label: "submit", xpath: xp });
     }
   }
 
-  // 5️⃣ Parent → child (GEEN div/div)
+  // 5️⃣ Parent → child (GEEN div/div duplicates)
   const parent = el.parentElement;
   if (parent && parent.tagName !== el.tagName) {
     const cls = parent.getAttribute("class");
     if (cls) {
-      const xp = `//${parent.tagName.toLowerCase()}[contains(@class,${escapeXPathValue(
-        cls.split(" ")[0]
-      )})]//${tag}`;
-      if (xpathWorks(xp)) {
-        xpaths.push({ label: "parent-child", xpath: xp });
-      }
+      const xp = `//${parent.tagName.toLowerCase()}[contains(@class,${escapeXPathValue(cls.split(" ")[0])})]//${tag}`;
+      if (xpathWorks(xp)) xpaths.push({ label: "parent-child", xpath: xp });
     }
   }
 
-  // 6️⃣ Absolute fallback
+  // 6️⃣ Wrapper-divs generiek
+  xpaths.push(...generateWrapperXPaths(el));
+
+  // 7️⃣ Absolute fallback
   const abs = getAbsoluteXPath(el);
   if (xpathWorks(abs)) {
     xpaths.push({ label: "absolute", xpath: abs });
