@@ -1,31 +1,15 @@
-let lastElement = null;
+// content.js
 
-document.addEventListener("contextmenu", (e) => {
-  lastElement = e.target;
+let lastElement = null;
+let lastHovered = null;
+
+document.addEventListener("mouseover", (e) => {
+  lastHovered = e.target;
 }, true);
 
-window.getLastElementXPaths = function () {
-  if (!lastElement) return [];
-
-  const xpaths = generateXPaths(lastElement);
-
-  // Check of dit script in een iframe draait
-  const containingIframe = getContainingIframe();
-  if (containingIframe) {
-    const iframeXPath = getIframeXPath(containingIframe);
-    // Prefix elke xpath met de iframe xpath
-    return xpaths.map(x => ({
-      label: x.label,
-      xpath: `xpath=${iframeXPath} >>> xpath=${x.xpath}`
-    }));
-  }
-
-  return xpaths;
-};
-
 document.addEventListener("contextmenu", (e) => {
-  lastElement = e.target;
-  console.log("[XPath] contextmenu op:", e.target);
+  lastElement = lastHovered || e.target;
+  console.log("[XPath] contextmenu op:", lastElement);
 
   chrome.runtime.sendMessage({ type: "update-xpath-menu" }, (response) => {
     if (chrome.runtime.lastError) {
@@ -35,3 +19,20 @@ document.addEventListener("contextmenu", (e) => {
     }
   });
 }, true);
+
+window.getLastElementXPaths = function () {
+  if (!lastElement) return [];
+
+  const xpaths = generateXPaths(lastElement);
+
+  const containingIframe = getContainingIframe();
+  if (containingIframe) {
+    const iframeXPath = getIframeXPath(containingIframe);
+    return xpaths.map(x => ({
+      label: x.label,
+      xpath: `xpath=${iframeXPath} >>> xpath=${x.xpath}`
+    }));
+  }
+
+  return xpaths;
+};
