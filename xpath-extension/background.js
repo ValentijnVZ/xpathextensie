@@ -1,4 +1,7 @@
+// background.js
+
 let submenuIds = [];
+let lastFrameId = 0;
 
 // Maak root menu bij installatie
 chrome.runtime.onInstalled.addListener(() => {
@@ -13,18 +16,18 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener(async (msg, sender) => {
   if (msg.type === "update-xpath-menu" && sender.tab?.id) {
     const tabId = sender.tab.id;
+    lastFrameId = sender.frameId ?? 0;
 
-    // Haal XPaths van content script
     const results = await chrome.scripting.executeScript({
-      target: { tabId },
+      target: { tabId, frameIds: [lastFrameId] },
       func: () => window.getLastElementXPaths()
     });
 
-    const xpaths = results[0].result || [];
+    const xpaths = results[0]?.result || [];
 
-    // Verwijder alleen oude submenu-items
+    // Verwijder oude submenu-items
     for (const id of submenuIds) {
-      chrome.contextMenus.remove(id);
+      try { chrome.contextMenus.remove(id); } catch (e) {}
     }
     submenuIds = [];
 
@@ -34,7 +37,7 @@ chrome.runtime.onMessage.addListener(async (msg, sender) => {
       chrome.contextMenus.create({
         id,
         parentId: "copy-xpath-root",
-        title: x.xpath, // toon de volledige XPath
+        title: x.xpath.length > 60 ? x.xpath.slice(0, 57) + "…" : x.xpath,
         contexts: ["all"]
       });
       submenuIds.push(id);
@@ -48,15 +51,16 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   if (info.menuItemId.startsWith("xpath-")) {
     const idx = parseInt(info.menuItemId.split("-")[1]);
+
     const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
+      target: { tabId: tab.id, frameIds: [lastFrameId] },
       func: () => window.getLastElementXPaths()
     });
 
-    const xpaths = results[0].result || [];
+    const xpaths = results[0]?.result || [];
     if (xpaths[idx]) {
       await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
+        target: { tabId: tab.id, frameIds: [lastFrameId] },
         func: (text) => navigator.clipboard.writeText(text),
         args: [xpaths[idx].xpath]
       });

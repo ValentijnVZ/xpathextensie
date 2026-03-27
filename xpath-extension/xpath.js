@@ -223,3 +223,39 @@ function generateXPaths(el) {
     return true;
   });
 }
+
+
+// ============================
+// Iframe support
+// ============================
+
+// Geeft de iframe terug waar dit window in zit (als dit een iframe is)
+function getContainingIframe() {
+  if (window === window.top) return null;
+  try {
+    const iframes = window.top.document.querySelectorAll("iframe");
+    for (const iframe of iframes) {
+      try {
+        if (iframe.contentWindow === window) return iframe;
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Geeft XPath van de iframe zelf (vanuit parent document)
+function getIframeXPath(iframeEl) {
+  // Gebruik de bestaande generateXPaths, maar dan vanuit parent context
+  // We sturen dit via message naar de parent
+  const tag = "iframe";
+  const id = iframeEl.getAttribute("id");
+  const name = iframeEl.getAttribute("name");
+  const src = iframeEl.getAttribute("src");
+  const testId = iframeEl.getAttribute("data-testid");
+
+  if (id) return `//iframe[@id='${id}']`;
+  if (testId) return `//iframe[@data-testid='${testId}']`;
+  if (name) return `//iframe[@name='${name}']`;
+  if (src) return `//iframe[@src='${src}']`;
+  return getAbsoluteXPath(iframeEl);
+}
