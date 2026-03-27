@@ -9,13 +9,10 @@ document.addEventListener("mouseover", (e) => {
 
 document.addEventListener("contextmenu", (e) => {
   lastElement = lastHovered || e.target;
-  console.log("[XPath] contextmenu op:", lastElement);
 
   chrome.runtime.sendMessage({ type: "update-xpath-menu" }, (response) => {
     if (chrome.runtime.lastError) {
       console.error("[XPath] sendMessage error:", chrome.runtime.lastError.message);
-    } else {
-      console.log("[XPath] message verstuurd, response:", response);
     }
   });
 }, true);
