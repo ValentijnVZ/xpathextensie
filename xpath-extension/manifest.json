@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "iframe XPath (per element)",
+  "name": " XPath (per iframe)",
   "version": "1.0",
   "permissions": [
     "contextMenus",
