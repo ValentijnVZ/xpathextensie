@@ -1,13 +1,25 @@
+// content.js
+
 let lastElement = null;
 
-document.addEventListener("mouseover", e => {
+document.addEventListener("mouseover", (e) => {
   lastElement = e.target;
-
-  // Stuur een bericht naar background om menu te updaten
   chrome.runtime.sendMessage({ type: "update-xpath-menu" });
 });
 
 window.getLastElementXPaths = () => {
   if (!lastElement) return [];
-  return generateXPaths(lastElement); // xpath.js
+
+  const xpaths = generateXPaths(lastElement);
+
+  const containingIframe = getContainingIframe();
+  if (containingIframe) {
+    const iframeXPath = getIframeXPath(containingIframe);
+    return xpaths.map(x => ({
+      label: x.label,
+      xpath: `xpath=${iframeXPath} >>> xpath=${x.xpath}`
+    }));
+  }
+
+  return xpaths;
 };
