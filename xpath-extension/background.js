@@ -13,80 +13,85 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener(async (msg, sender) => {
   if (msg.type === "update-xpath-menu" && sender.tab?.id) {
     const tabId = sender.tab.id;
-    const frameId = sender.frameId ?? 0; // frameId van het content script dat het bericht stuurde
+    const frameId = sender.frameId ?? 0;
 
-    // Haal XPaths van content script (in het juiste frame)
-    const results = await chrome.scripting.executeScript({
-      target: { tabId, frameIds: [frameId] },
-      func: () => window.getLastElementXPaths()
-    });
-
-    const xpaths = results[0].result || [];
-
-    // Haal iframe id op als we niet in het main frame zitten
-    let iframeId = null;
-    if (frameId !== 0) {
-      const iframeResults = await chrome.scripting.executeScript({
+    try {
+      // Haal XPaths op uit het juiste frame
+      const results = await chrome.scripting.executeScript({
         target: { tabId, frameIds: [frameId] },
-        func: () => {
-          // Probeer het iframe-element in de parent te vinden via frameElement
-          try {
-            const fe = window.frameElement;
-            return fe ? (fe.getAttribute("id") || fe.getAttribute("name") || null) : null;
-          } catch (e) {
-            return null; // cross-origin frameElement is niet toegankelijk
-          }
+        func: () => window.getLastElementXPaths?.() || []
+      });
+
+      const xpaths = results?.[0]?.result || [];
+
+      // Oude submenu-items verwijderen
+      for (const id of submenuIds) {
+        try {
+          await chrome.contextMenus.remove(id);
+        } catch (e) {
+          // negeren als item al weg is
         }
+      }
+      submenuIds = [];
+
+      // Nieuwe submenu-items toevoegen
+      xpaths.forEach((x, idx) => {
+        const id = `xpath-${frameId}-${idx}`;
+
+        chrome.contextMenus.create({
+          id,
+          parentId: "copy-xpath-root",
+          title: x.fullXpath || x.xpath || `XPath ${idx + 1}`,
+          contexts: ["all"]
+        });
+
+        submenuIds.push(id);
       });
-      iframeId = iframeResults[0].result ?? null;
+
+      // FrameId opslaan voor debugging / later gebruik
+      await chrome.storage.session.set({ lastFrameId: frameId });
+    } catch (err) {
+      console.error("Fout bij updaten van XPath menu:", err);
     }
-
-    // Verwijder alleen oude submenu-items
-    for (const id of submenuIds) {
-      chrome.contextMenus.remove(id);
-    }
-    submenuIds = [];
-
-    // Voeg nieuwe submenu-items toe
-    xpaths.forEach((x, idx) => {
-      const id = `xpath-${frameId}-${idx}`; // frameId in het id zodat het uniek blijft
-      const iframePrefix = iframeId ? `[iframe#${iframeId}] ` : (frameId !== 0 ? `[iframe frameId:${frameId}] ` : "");
-      chrome.contextMenus.create({
-        id,
-        parentId: "copy-xpath-root",
-        title: `${iframePrefix}${x.xpath}`,
-        contexts: ["all"]
-      });
-      submenuIds.push(id);
-    });
-
-    // Sla frameId op voor gebruik bij klikken
-    chrome.storage.session.set({ lastFrameId: frameId });
   }
 });
 
-// Kopieer XPath naar clipboard bij klikken
+// Kopieer XPath + iframe context naar clipboard bij klikken
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab?.id) return;
+  if (!String(info.menuItemId).startsWith("xpath-")) return;
 
-  if (info.menuItemId.startsWith("xpath-")) {
-    // Haal frameId en idx uit het menu-item id (formaat: xpath-{frameId}-{idx})
-    const parts = info.menuItemId.split("-");
-    const frameId = parseInt(parts[1]);
-    const idx = parseInt(parts[2]);
+  try {
+    // formaat: xpath-{frameId}-{idx}
+    const parts = String(info.menuItemId).split("-");
+    const frameId = parseInt(parts[1], 10);
+    const idx = parseInt(parts[2], 10);
 
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id, frameIds: [frameId] },
-      func: () => window.getLastElementXPaths()
+      func: () => window.getLastElementXPaths?.() || []
     });
 
-    const xpaths = results[0].result || [];
-    if (xpaths[idx]) {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id, frameIds: [frameId] },
-        func: (text) => navigator.clipboard.writeText(text),
-        args: [xpaths[idx].xpath]
-      });
-    }
+    const xpaths = results?.[0]?.result || [];
+    const selected = xpaths[idx];
+
+    if (!selected) return;
+
+    const textToCopy =
+`FRAME_CHAIN: ${selected.frameChainXpath || ""}
+ELEMENT_XPATH: ${selected.xpath || ""}
+FULL_XPATH: ${selected.fullXpath || selected.xpath || ""}`;
+
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id, frameIds: [frameId] },
+      func: async (text) => {
+        await navigator.clipboard.writeText(text);
+      },
+      args: [textToCopy]
+    });
+
+    console.log("Gekopieerd:", textToCopy);
+  } catch (err) {
+    console.error("Fout bij kopiëren van XPath:", err);
   }
 });
