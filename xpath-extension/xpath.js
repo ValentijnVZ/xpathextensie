@@ -85,72 +85,6 @@ function generateAttributeCombinations(el) {
 }
 
 // ============================
-// iframe chain ophalen
-// Geeft array terug zoals:
-// ["xpath=//iframe[@id='frame1']", "xpath=//iframe[@id='inner']"]
-// ============================
-function getFrameChain() {
-  const chain = [];
-
-  let currentWindow = window;
-
-  while (currentWindow !== currentWindow.top) {
-    let parentWindow;
-    try {
-      parentWindow = currentWindow.parent;
-    } catch (e) {
-      break;
-    }
-
-    let frameEl = null;
-
-    try {
-      const frames = parentWindow.document.querySelectorAll("iframe, frame");
-
-      for (const candidate of frames) {
-        try {
-          if (candidate.contentWindow === currentWindow) {
-            frameEl = candidate;
-            break;
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-    } catch (e) {
-      break;
-    }
-
-    if (!frameEl) break;
-
-    const tag = frameEl.tagName.toLowerCase();
-    let frameXPath = "";
-
-    if (frameEl.id) {
-      frameXPath = `//${tag}[@id=${escapeXPathValue(frameEl.id)}]`;
-    } else if (frameEl.name) {
-      frameXPath = `//${tag}[@name=${escapeXPathValue(frameEl.name)}]`;
-    } else if (frameEl.title) {
-      frameXPath = `//${tag}[@title=${escapeXPathValue(frameEl.title)}]`;
-    } else if (frameEl.getAttribute("src")) {
-      frameXPath = `//${tag}[@src=${escapeXPathValue(frameEl.getAttribute("src"))}]`;
-    } else {
-      frameXPath = getAbsoluteXPath(frameEl);
-    }
-
-    if (frameXPath && !frameXPath.startsWith("/html") && !frameXPath.startsWith("/body")) {
-      chain.unshift(`xpath=${frameXPath}`);
-    } else if (frameXPath) {
-      chain.unshift(`xpath=${frameXPath}`);
-    }
-
-    currentWindow = parentWindow;
-  }
-
-  return chain;
-}
-
-// ============================
 // Universele XPath generator
 // ============================
 function generateXPaths(el) {
@@ -218,7 +152,7 @@ function generateXPaths(el) {
       if (parent && parent.tagName.toLowerCase() === "div" && parentClass) {
         xpaths.push({
           label: "container-div-field",
-          xpath: `//div[contains(@class,${escapeXPathValue(parentClass)})]//input[@type='search']`
+          xpath: `//div[contains(@class,'${parentClass}')]//input[@type='search']`
         });
         break;
       }
@@ -282,22 +216,10 @@ function generateXPaths(el) {
   });
 
   // ✅ Filter XPaths die niet werken + geen html/body + divs moeten contain class hebben
-  const validXPaths = xpaths.filter(x => {
+  return xpaths.filter(x => {
     if (!testXPath(x.xpath)) return false;
     if (x.xpath.startsWith("/html") || x.xpath.startsWith("/body")) return false;
     if (x.xpath.includes("//div") && !/contains\(@class/.test(x.xpath)) return false;
     return true;
   });
-
-  // iframe chain toevoegen + robot locator maken
-  const frameChain = getFrameChain();
-
-  return validXPaths.map(x => ({
-    ...x,
-    framePath: frameChain,
-    robotLocator: [...frameChain, `xpath=${x.xpath}`].join(" >>> ")
-  }));
 }
-
-// optioneel globaal exposen
-window.generateXPaths = generateXPaths;
