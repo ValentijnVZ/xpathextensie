@@ -22,3 +22,16 @@ window.getLastElementXPaths = function () {
 
   return xpaths;
 };
+
+document.addEventListener("contextmenu", (e) => {
+  lastElement = e.target;
+  console.log("[XPath] contextmenu op:", e.target);
+
+  chrome.runtime.sendMessage({ type: "update-xpath-menu" }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error("[XPath] sendMessage error:", chrome.runtime.lastError.message);
+    } else {
+      console.log("[XPath] message verstuurd, response:", response);
+    }
+  });
+}, true);

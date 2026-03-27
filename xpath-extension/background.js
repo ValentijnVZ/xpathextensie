@@ -14,6 +14,8 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Update submenu-items bij rechterklik
 chrome.runtime.onMessage.addListener(async (msg, sender) => {
+  console.log("[XPath BG] message ontvangen:", msg, "frameId:", sender.frameId);
+
   if (msg.type === "update-xpath-menu" && sender.tab?.id) {
     const tabId = sender.tab.id;
     lastFrameId = sender.frameId ?? 0;
@@ -24,6 +26,7 @@ chrome.runtime.onMessage.addListener(async (msg, sender) => {
     });
 
     const xpaths = results[0]?.result || [];
+    console.log("[XPath BG] xpaths gevonden:", xpaths.length, xpaths);
 
     // Verwijder oude submenu-items
     for (const id of submenuIds) {
