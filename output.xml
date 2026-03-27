@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.4.2 (Python 3.11.4 on win32)" generated="2026-03-27T15:15:37.306005" rpa="false" schemaversion="5">
+<suite id="s1" name="Robot" source="c:\Users\vmamu\Documents\GitHub\xpathextensie\robot.robot">
+<test id="s1-t1" name="Test Klik In Frame Met Generieke Locators" line="19">
+<kw name="New Browser" owner="Browser">
+<msg time="2026-03-27T15:15:37.524579" level="INFO">{"browser": "chromium", "headless": false, "chromiumSandbox": false, "devtools": false, "handleSIGHUP": true, "handleSIGINT": true, "handleSIGTERM": true, "slowMo": 0.0, "timeout": 30000.0, "tracesDir": "C:\\Users\\vmamu\\Documents\\GitHub\\xpathextensie\\browser\\traces\\temp\\bd27d93b-d013-48fb-85aa-dab8c669a67c"}</msg>
+<msg time="2026-03-27T15:15:37.545607" level="INFO">Starting Browser process C:\Users\vmamu\AppData\Local\Programs\Python\Python311\Lib\site-packages\Browser\wrapper\index.js using at 127.0.0.1:52272</msg>
+<msg time="2026-03-27T15:15:39.294737" level="INFO">Successfully created browser with options: {"browser":"chromium","headless":false,"chromiumSandbox":false,"devtools":false,"handleSIGHUP":true,"handleSIGINT":true,"handleSIGTERM":true,"slowMo":0,"timeout":30000,"tracesDir":"C:\\Users\\vmamu\\Documents\\GitHub\\xpathextensie\\browser\\traces\\temp\\bd27d93b-d013-48fb-85aa-dab8c669a67c"}</msg>
+<arg>chromium</arg>
+<arg>headless=False</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Create a new playwright Browser with specified options.</doc>
+<status status="PASS" start="2026-03-27T15:15:37.523506" elapsed="1.771231"/>
+</kw>
+<kw name="New Context" owner="Browser">
+<msg time="2026-03-27T15:15:39.297738" level="INFO">{
+  "acceptDownloads": true,
+  "bypassCSP": false,
+  "forcedColors": "none",
+  "ignoreHTTPSErrors": false,
+  "javaScriptEnabled": true,
+  "offline": false,
+  "reducedMotion": "no-preference",
+  "serviceWorkers": "allow",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  }
+}</msg>
+<msg time="2026-03-27T15:15:39.314093" level="INFO">Successfully created context. </msg>
+<msg time="2026-03-27T15:15:39.314093" level="INFO">{'acceptDownloads': True, 'bypassCSP': False, 'forcedColors': 'none', 'ignoreHTTPSErrors': False, 'javaScriptEnabled': True, 'offline': False, 'reducedMotion': 'no-preference', 'serviceWorkers': 'allow', 'viewport': {'width': 1280, 'height': 720}}</msg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Create a new BrowserContext with specified options.</doc>
+<status status="PASS" start="2026-03-27T15:15:39.295738" elapsed="0.018355"/>
+</kw>
+<kw name="New Page" owner="Browser">
+<msg time="2026-03-27T15:15:39.511318" level="INFO">Successfully initialized new page object and opened url: http://127.0.0.1:5500/index.html</msg>
+<arg>http://127.0.0.1:5500/index.html</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-03-27T15:15:39.315092" elapsed="0.197226"/>
+</kw>
+<kw name="Get Text In Frame">
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:39.539837" level="INFO">Waited for Element with selector xpath=//iframe[@id='frame1'] at state visible</msg>
+<arg>${frame_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:39.513318" elapsed="0.026519"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:39.555191" level="INFO">Waited for Element with selector xpath=//iframe[@id='frame1'] &gt;&gt;&gt; xpath=//button[1] at state visible</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:39.539837" elapsed="0.016353"/>
+</kw>
+<kw name="Get Text" owner="Browser">
+<msg time="2026-03-27T15:15:39.584571" level="INFO">Text: 'Button 1'</msg>
+<msg time="2026-03-27T15:15:39.585086" level="INFO">${text} = Button 1</msg>
+<var>${text}</var>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<tag>Assertion</tag>
+<tag>Getter</tag>
+<tag>PageContent</tag>
+<doc>Returns text attribute of the element found by ``selector``.</doc>
+<status status="PASS" start="2026-03-27T15:15:39.556190" elapsed="0.028896"/>
+</kw>
+<return>
+<value>${text}</value>
+<status status="PASS" start="2026-03-27T15:15:39.585592" elapsed="0.000000"/>
+</return>
+<msg time="2026-03-27T15:15:39.585592" level="INFO">${tekst} = Button 1</msg>
+<var>${tekst}</var>
+<arg>xpath=//iframe[@id='frame1']</arg>
+<arg>xpath=//button[1]</arg>
+<status status="PASS" start="2026-03-27T15:15:39.512318" elapsed="0.073274"/>
+</kw>
+<kw name="Log To Console" owner="BuiltIn">
+<arg>Tekst = ${tekst}</arg>
+<doc>Logs the given message to the console.</doc>
+<status status="PASS" start="2026-03-27T15:15:39.586600" elapsed="0.000000"/>
+</kw>
+<kw name="Sleep" owner="BuiltIn">
+<msg time="2026-03-27T15:15:42.587714" level="INFO">Slept 3 seconds.</msg>
+<arg>3s</arg>
+<doc>Pauses the test executed for the given time.</doc>
+<status status="PASS" start="2026-03-27T15:15:39.587599" elapsed="3.000115"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-03-27T15:15:42.588717" level="INFO">Clicks the element 'xpath=//iframe[@id='frame1'] &gt;&gt;&gt; xpath=//button[1]'.</msg>
+<arg>xpath=//iframe[@id='frame1'] &gt;&gt;&gt; xpath=//button[1]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.587714" elapsed="0.035824"/>
+</kw>
+<kw name="Click Element In Frame">
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.628538" level="INFO">Waited for Element with selector xpath=//iframe[@id='frame1'] at state visible</msg>
+<arg>${frame_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.624539" elapsed="0.003999"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.633145" level="INFO">Waited for Element with selector xpath=//iframe[@id='frame1'] &gt;&gt;&gt; xpath=//button[1] at state visible</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.628538" elapsed="0.004607"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-03-27T15:15:42.634156" level="INFO">Clicks the element 'xpath=//iframe[@id='frame1'] &gt;&gt;&gt; xpath=//button[1]'.</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.633145" elapsed="0.017011"/>
+</kw>
+<arg>xpath=//iframe[@id='frame1']</arg>
+<arg>xpath=//button[1]</arg>
+<status status="PASS" start="2026-03-27T15:15:42.623538" elapsed="0.026618"/>
+</kw>
+<kw name="Click Element In Frame">
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.655042" level="INFO">Waited for Element with selector xpath=//iframe[@id='frame2'] at state visible</msg>
+<arg>${frame_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.651156" elapsed="0.003886"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.666042" level="INFO">Waited for Element with selector xpath=//iframe[@id='frame2'] &gt;&gt;&gt; xpath=//button[1] at state visible</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.655042" elapsed="0.011000"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-03-27T15:15:42.667043" level="INFO">Clicks the element 'xpath=//iframe[@id='frame2'] &gt;&gt;&gt; xpath=//button[1]'.</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.666042" elapsed="0.017150"/>
+</kw>
+<arg>xpath=//iframe[@id='frame2']</arg>
+<arg>xpath=//button[1]</arg>
+<status status="PASS" start="2026-03-27T15:15:42.650156" elapsed="0.033036"/>
+</kw>
+<kw name="Click Element In Frame">
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.688562" level="INFO">Waited for Element with selector css=iframe#frame1 at state visible</msg>
+<arg>${frame_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.684192" elapsed="0.005369"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.694561" level="INFO">Waited for Element with selector css=iframe#frame1 &gt;&gt;&gt; id=btn1 at state visible</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.689561" elapsed="0.005000"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-03-27T15:15:42.695562" level="INFO">Clicks the element 'css=iframe#frame1 &gt;&gt;&gt; id=btn1'.</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.694561" elapsed="0.017239"/>
+</kw>
+<arg>css=iframe#frame1</arg>
+<arg>id=btn1</arg>
+<status status="PASS" start="2026-03-27T15:15:42.684192" elapsed="0.027608"/>
+</kw>
+<kw name="Click Element In Frame">
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.716800" level="INFO">Waited for Element with selector css=iframe#frame2 at state visible</msg>
+<arg>${frame_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.712801" elapsed="0.003999"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.720800" level="INFO">Waited for Element with selector css=iframe#frame2 &gt;&gt;&gt; id=btn2 at state visible</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.716800" elapsed="0.004000"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-03-27T15:15:42.721802" level="INFO">Clicks the element 'css=iframe#frame2 &gt;&gt;&gt; id=btn2'.</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.721802" elapsed="0.017137"/>
+</kw>
+<arg>css=iframe#frame2</arg>
+<arg>id=btn2</arg>
+<status status="PASS" start="2026-03-27T15:15:42.711800" elapsed="0.027139"/>
+</kw>
+<kw name="Click Element In Frame">
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.743938" level="INFO">Waited for Element with selector css=iframe#frame3 at state visible</msg>
+<arg>${frame_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.739937" elapsed="0.004001"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-03-27T15:15:42.755939" level="INFO">Waited for Element with selector css=iframe#frame3 &gt;&gt;&gt; id=btn3 at state visible</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<arg>visible</arg>
+<arg>10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.743938" elapsed="0.012001"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-03-27T15:15:42.756937" level="INFO">Clicks the element 'css=iframe#frame3 &gt;&gt;&gt; id=btn3'.</msg>
+<arg>${frame_locator} &gt;&gt;&gt; ${element_locator}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.756937" elapsed="0.018010"/>
+</kw>
+<arg>css=iframe#frame3</arg>
+<arg>id=btn3</arg>
+<status status="PASS" start="2026-03-27T15:15:42.738939" elapsed="0.037007"/>
+</kw>
+<kw name="Sleep" owner="BuiltIn">
+<msg time="2026-03-27T15:15:45.776369" level="INFO">Slept 3 seconds.</msg>
+<arg>3s</arg>
+<doc>Pauses the test executed for the given time.</doc>
+<status status="PASS" start="2026-03-27T15:15:42.775946" elapsed="3.000423"/>
+</kw>
+<kw name="Close Browser" owner="Browser">
+<msg time="2026-03-27T15:15:45.931476" level="INFO">Closed browser</msg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-03-27T15:15:45.776369" elapsed="0.156106"/>
+</kw>
+<status status="PASS" start="2026-03-27T15:15:37.522992" elapsed="8.409483"/>
+</test>
+<status status="PASS" start="2026-03-27T15:15:37.310005" elapsed="8.626471"/>
+</suite>
+<statistics>
+<total>
+<stat pass="1" fail="0" skip="0">All Tests</stat>
+</total>
+<tag>
+</tag>
+<suite>
+<stat name="Robot" id="s1" pass="1" fail="0" skip="0">Robot</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>

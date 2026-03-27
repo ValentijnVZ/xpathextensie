@@ -9,11 +9,14 @@
     "clipboardWrite"
   ],
   "host_permissions": ["<all_urls>"],
-  "background": { "service_worker": "background.js" },
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js", "xpath.js"]
+      "js": ["xpath.js", "content.js"],
+      "all_frames": true
     }
   ]
 }

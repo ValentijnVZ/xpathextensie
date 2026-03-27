@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Buttons</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 16px;
+        }
+
+        #status {
+            margin-bottom: 12px;
+            padding: 10px;
+            border: 1px solid #999;
+            background: #f3f3f3;
+            font-weight: bold;
+        }
+
+        .btn {
+            margin-right: 8px;
+            margin-bottom: 8px;
+            padding: 10px 14px;
+            cursor: pointer;
+        }
+
+        .clicked {
+            background: limegreen;
+            color: white;
+            border: 2px solid green;
+        }
+    </style>
+    <script>
+        let clickCount = 0;
+
+        function markClicked(button, name) {
+            clickCount++;
+
+            document.getElementById("status").textContent =
+                "Geklikt op: " + name + " | totaal aantal kliks: " + clickCount;
+
+            button.classList.add("clicked");
+            button.textContent = name + " GEKLIKT";
+            button.setAttribute("data-clicked", "true");
+        }
+    </script>
+</head>
+<body>
+
+<div id="status">Nog niet geklikt</div>
+
+<button class="btn" id="btn1" onclick="markClicked(this, 'Button 1')">Button 1</button>
+<button class="btn" id="btn2" onclick="markClicked(this, 'Button 2')">Button 2</button>
+<button class="btn" id="btn3" onclick="markClicked(this, 'Button 3')">Button 3</button>
+
+</body>
+</html>
