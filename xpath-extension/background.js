@@ -13,85 +13,53 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener(async (msg, sender) => {
   if (msg.type === "update-xpath-menu" && sender.tab?.id) {
     const tabId = sender.tab.id;
-    const frameId = sender.frameId ?? 0;
 
-    try {
-      // Haal XPaths op uit het juiste frame
-      const results = await chrome.scripting.executeScript({
-        target: { tabId, frameIds: [frameId] },
-        func: () => window.getLastElementXPaths?.() || []
-      });
+    // Haal XPaths van content script
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => window.getLastElementXPaths()
+    });
 
-      const xpaths = results?.[0]?.result || [];
+    const xpaths = results[0].result || [];
 
-      // Oude submenu-items verwijderen
-      for (const id of submenuIds) {
-        try {
-          await chrome.contextMenus.remove(id);
-        } catch (e) {
-          // negeren als item al weg is
-        }
-      }
-      submenuIds = [];
-
-      // Nieuwe submenu-items toevoegen
-      xpaths.forEach((x, idx) => {
-        const id = `xpath-${frameId}-${idx}`;
-
-        chrome.contextMenus.create({
-          id,
-          parentId: "copy-xpath-root",
-          title: x.fullXpath || x.xpath || `XPath ${idx + 1}`,
-          contexts: ["all"]
-        });
-
-        submenuIds.push(id);
-      });
-
-      // FrameId opslaan voor debugging / later gebruik
-      await chrome.storage.session.set({ lastFrameId: frameId });
-    } catch (err) {
-      console.error("Fout bij updaten van XPath menu:", err);
+    // Verwijder alleen oude submenu-items
+    for (const id of submenuIds) {
+      chrome.contextMenus.remove(id);
     }
+    submenuIds = [];
+
+    // Voeg nieuwe submenu-items toe
+    xpaths.forEach((x, idx) => {
+      const id = `xpath-${idx}`;
+      chrome.contextMenus.create({
+        id,
+        parentId: "copy-xpath-root",
+        title: x.xpath, // toon de volledige XPath
+        contexts: ["all"]
+      });
+      submenuIds.push(id);
+    });
   }
 });
 
-// Kopieer XPath + iframe context naar clipboard bij klikken
+// Kopieer XPath naar clipboard bij klikken
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab?.id) return;
-  if (!String(info.menuItemId).startsWith("xpath-")) return;
 
-  try {
-    // formaat: xpath-{frameId}-{idx}
-    const parts = String(info.menuItemId).split("-");
-    const frameId = parseInt(parts[1], 10);
-    const idx = parseInt(parts[2], 10);
-
+  if (info.menuItemId.startsWith("xpath-")) {
+    const idx = parseInt(info.menuItemId.split("-")[1]);
     const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id, frameIds: [frameId] },
-      func: () => window.getLastElementXPaths?.() || []
+      target: { tabId: tab.id },
+      func: () => window.getLastElementXPaths()
     });
 
-    const xpaths = results?.[0]?.result || [];
-    const selected = xpaths[idx];
-
-    if (!selected) return;
-
-    const textToCopy =
-`FRAME_CHAIN: ${selected.frameChainXpath || ""}
-ELEMENT_XPATH: ${selected.xpath || ""}
-FULL_XPATH: ${selected.fullXpath || selected.xpath || ""}`;
-
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id, frameIds: [frameId] },
-      func: async (text) => {
-        await navigator.clipboard.writeText(text);
-      },
-      args: [textToCopy]
-    });
-
-    console.log("Gekopieerd:", textToCopy);
-  } catch (err) {
-    console.error("Fout bij kopiëren van XPath:", err);
+    const xpaths = results[0].result || [];
+    if (xpaths[idx]) {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (text) => navigator.clipboard.writeText(text),
+        args: [xpaths[idx].xpath]
+      });
+    }
   }
 });
