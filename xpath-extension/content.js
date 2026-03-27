@@ -1,35 +1,13 @@
-// content.js
-
 let lastElement = null;
-let lastHovered = null;
 
-document.addEventListener("mouseover", (e) => {
-  lastHovered = e.target;
-}, true);
+document.addEventListener("mouseover", e => {
+  lastElement = e.target;
 
-document.addEventListener("contextmenu", (e) => {
-  lastElement = lastHovered || e.target;
+  // Stuur een bericht naar background om menu te updaten
+  chrome.runtime.sendMessage({ type: "update-xpath-menu" });
+});
 
-  chrome.runtime.sendMessage({ type: "update-xpath-menu" }, (response) => {
-    if (chrome.runtime.lastError) {
-      console.error("[XPath] sendMessage error:", chrome.runtime.lastError.message);
-    }
-  });
-}, true);
-
-window.getLastElementXPaths = function () {
+window.getLastElementXPaths = () => {
   if (!lastElement) return [];
-
-  const xpaths = generateXPaths(lastElement);
-
-  const containingIframe = getContainingIframe();
-  if (containingIframe) {
-    const iframeXPath = getIframeXPath(containingIframe);
-    return xpaths.map(x => ({
-      label: x.label,
-      xpath: `xpath=${iframeXPath} >>> xpath=${x.xpath}`
-    }));
-  }
-
-  return xpaths;
+  return generateXPaths(lastElement); // xpath.js
 };
